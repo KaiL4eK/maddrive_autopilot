@@ -39,6 +39,8 @@ manual_control_velocity_set_only = False
 
 manual_control_publish_period_ms = 200
 
+manual_control_enabled = True
+
 # ---------------------------------------------------------------------------
 
 def ros_controller_set_velocity(velocity):
@@ -52,7 +54,7 @@ def ros_controller_set_steering(steering):
 # ---------------------------------------------------------------------------
 
 def manual_publish_control():
-    # print ('Publishing', manual_control_steering_value, manual_control_velocity_value)
+    print ('Publishing', manual_control_steering_value, manual_control_velocity_value)
     ros_controller_set_velocity(manual_control_velocity_value)
     ros_controller_set_steering(manual_control_steering_value)
 
@@ -65,6 +67,9 @@ def manual_control_callback_mouse_released(event):
     global manual_control_velocity_value, manual_control_enable_publish, \
             manual_control_steering_set_only, manual_control_velocity_set_only
     
+    if not manual_control_enabled:
+        return
+
     manual_control_velocity_value = 0
     manual_control_enable_publish = False
     manual_control_velocity_set_only = False
@@ -75,6 +80,9 @@ def manual_conrtol_callback_mouse_motion(event):
     global manual_control_steering_value, manual_control_velocity_value, \
             manual_control_enable_publish
     
+    if not manual_control_enabled:
+        return
+
     if not manual_control_velocity_set_only:
         x = np.clip(event.x, 0, control_canvas_width)
         manual_control_steering_value = (float(x) / control_canvas_width - 0.5) * 2 * steering_abs_limit
@@ -91,10 +99,18 @@ def manual_conrtol_callback_mouse_motion(event):
 
 def manual_control_callback_ctrl_mouse_click(event):
     global manual_control_steering_set_only
+
+    if not manual_control_enabled:
+        return
+
     manual_control_steering_set_only = True
 
 def manual_control_callback_shift_mouse_click(event):
     global manual_control_velocity_set_only
+
+    if not manual_control_enabled:
+        return
+
     manual_control_velocity_set_only = True
 
 # ---------------------------------------------------------------------------
@@ -117,9 +133,23 @@ def rangefinder4_callback(ros_data):
 
 # ---------------------------------------------------------------------------
 
+def toggle_control_state():
+    global manual_control_enabled
+
+    if manual_control_enabled:
+        toggle_control_state_btn.config(text='Auto')
+        manual_control_enabled = False
+    else:
+        toggle_control_state_btn.config(text='Manual')
+        manual_control_enabled = True
+
+# ---------------------------------------------------------------------------
+
+
 def init_gui():
     global rangefinder1_text, rangefinder2_text, \
-            rangefinder3_text, rangefinder4_text
+            rangefinder3_text, rangefinder4_text, \
+            manual_control_canvas_wgt, toggle_control_state_btn
 
     manual_control_canvas_wgt = Canvas(root, width=control_canvas_width, height=control_canvas_height, \
                                         highlightbackground='red', highlightthickness=3)
@@ -143,6 +173,8 @@ def init_gui():
     Label(root, textvariable=rangefinder3_text).grid(row=0, column=2, padx=5, pady=5)
     Label(root, textvariable=rangefinder4_text).grid(row=0, column=3, padx=5, pady=5)
 
+    toggle_control_state_btn = Button(text='Manual', width=10, command=toggle_control_state)
+    toggle_control_state_btn.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
 
 def init_connection():
     global velocity_pub, steering_pub, \
