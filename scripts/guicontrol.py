@@ -5,7 +5,8 @@ from Tkinter import *
 from PIL import Image
 from PIL import ImageTk
 
-import matplotlib, numpy, sys
+import numpy as np
+import matplotlib, sys
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -26,62 +27,139 @@ rangefinders_data = [0, 0, 0, 0]
 
 root = Tk()
 
-def velocity_slider_callback(val):
-    pass
+control_canvas_width = 400
+control_canvas_height = 300
 
-def steering_slider_callback(val):
-    steering_pub.publish(float(val))
+manual_control_steering_value = 0
+manual_control_velocity_value = 0
 
-def range_callback(ros_data):
+manual_control_enable_publish = False
+manual_control_steering_set_only = False
+manual_control_velocity_set_only = False
 
-    rospy.loginfo('Message caught: {} / {}'.format(ros_data.header.frame_id, ros_data.range))
+manual_control_publish_period_ms = 200
 
+# ---------------------------------------------------------------------------
+
+def ros_controller_set_velocity(velocity):
+    velocity = np.clip(velocity, -velocity_abs_limit, velocity_abs_limit);
+    velocity_pub.publish(float(velocity))
+
+def ros_controller_set_steering(steering):
+    steering = np.clip(steering, -steering_abs_limit, steering_abs_limit);
+    steering_pub.publish(float(steering))
+
+# ---------------------------------------------------------------------------
+
+def manual_publish_control():
+    # print ('Publishing', manual_control_steering_value, manual_control_velocity_value)
+    ros_controller_set_velocity(manual_control_velocity_value)
+    ros_controller_set_steering(manual_control_steering_value)
+
+    if manual_control_enable_publish:
+        root.after(manual_control_publish_period_ms, manual_publish_control)
+
+# ---------------------------------------------------------------------------
+
+def manual_control_callback_mouse_released(event):
+    global manual_control_velocity_value, manual_control_enable_publish, \
+            manual_control_steering_set_only, manual_control_velocity_set_only
+    
+    manual_control_velocity_value = 0
+    manual_control_enable_publish = False
+    manual_control_velocity_set_only = False
+    manual_control_steering_set_only = False
+    # print ('Released')
+
+def manual_conrtol_callback_mouse_motion(event):
+    global manual_control_steering_value, manual_control_velocity_value, \
+            manual_control_enable_publish
+    
+    if not manual_control_velocity_set_only:
+        x = np.clip(event.x, 0, control_canvas_width)
+        manual_control_steering_value = (float(x) / control_canvas_width - 0.5) * 2 * steering_abs_limit
+
+    if not manual_control_steering_set_only:
+        y = np.clip(event.y, 0, control_canvas_height)
+        manual_control_velocity_value = (float(y) / control_canvas_height - 0.5) * -2 * velocity_abs_limit
+
+    if manual_control_enable_publish is False:
+        root.after(manual_control_publish_period_ms, manual_publish_control)
+
+    manual_control_enable_publish = True
+    # print ('Motion', x, y)
+
+def manual_control_callback_ctrl_mouse_click(event):
+    global manual_control_steering_set_only
+    manual_control_steering_set_only = True
+
+def manual_control_callback_shift_mouse_click(event):
+    global manual_control_velocity_set_only
+    manual_control_velocity_set_only = True
+
+# ---------------------------------------------------------------------------
+
+def rangefinder1_callback(ros_data):
+    rangefinders_data[0] = ros_data.range
+    rangefinder1_text.set(ros_data.range)
+
+def rangefinder2_callback(ros_data):
+    rangefinders_data[1] = ros_data.range
+    rangefinder2_text.set(ros_data.range)
+
+def rangefinder3_callback(ros_data):
+    rangefinders_data[2] = ros_data.range
+    rangefinder3_text.set(ros_data.range)
+
+def rangefinder4_callback(ros_data):
+    rangefinders_data[3] = ros_data.range
+    rangefinder4_text.set(ros_data.range)
+
+# ---------------------------------------------------------------------------
 
 def init_gui():
-    global rangefinder1_text, rangefinder2_text, rangefinder3_text, rangefinder4_text
+    global rangefinder1_text, rangefinder2_text, \
+            rangefinder3_text, rangefinder4_text
 
-    sliders_widget_frame = Frame(root)
-    sliders_widget_frame.pack(side=BOTTOM, fill=BOTH, expand=True)
+    manual_control_canvas_wgt = Canvas(root, width=control_canvas_width, height=control_canvas_height, \
+                                        highlightbackground='red', highlightthickness=3)
+    manual_control_canvas_wgt.grid(row=1, column=0, columnspan=4)
+    manual_control_canvas_wgt.create_line(control_canvas_width/2, 0, control_canvas_width/2, control_canvas_height, fill='blue')
+    manual_control_canvas_wgt.create_line(0, control_canvas_height/2, control_canvas_width, control_canvas_height/2, fill='blue')
 
-    left_slider_widget_frame = Frame(sliders_widget_frame)
-    left_slider_widget_frame.pack(side=LEFT, fill=BOTH, expand=True)
+    manual_control_canvas_wgt.bind('<ButtonPress-1>', manual_conrtol_callback_mouse_motion)
+    manual_control_canvas_wgt.bind('<B1-Motion>', manual_conrtol_callback_mouse_motion)
+    manual_control_canvas_wgt.bind('<ButtonRelease-1>', manual_control_callback_mouse_released)
+    manual_control_canvas_wgt.bind('<Control-1>', manual_control_callback_ctrl_mouse_click)
+    manual_control_canvas_wgt.bind('<Shift-1>', manual_control_callback_shift_mouse_click)
 
-    velocity_slider_wgt = Scale(left_slider_widget_frame, from_=velocity_abs_limit, to=-velocity_abs_limit, orient=VERTICAL, command=velocity_slider_callback)
-    velocity_slider_wgt.pack(side=TOP, fill=Y, expand=True, padx=5, pady=5)
+    rangefinder1_text = StringVar(); rangefinder1_text.set(0)
+    rangefinder2_text = StringVar(); rangefinder2_text.set(0)
+    rangefinder3_text = StringVar(); rangefinder3_text.set(0)
+    rangefinder4_text = StringVar(); rangefinder4_text.set(0)
 
-    right_slider_widget_frame = Frame(sliders_widget_frame)
-    right_slider_widget_frame.pack(side=RIGHT, fill=BOTH, expand=True)
-
-    steering_slider_wgt = Scale(right_slider_widget_frame, from_=-steering_abs_limit, to=steering_abs_limit, orient=HORIZONTAL, command=steering_slider_callback)
-    steering_slider_wgt.pack(side=RIGHT, fill=X, expand=True, padx=5, pady=5)
-
-    texts_widget_frame = Frame(root)
-    texts_widget_frame.pack(side=TOP, fill=X)
-
-    rangefinder1_text = Label(texts_widget_frame, text="0.0")
-    rangefinder1_text.pack(side=LEFT, fill=BOTH, expand="yes", padx=5, pady=5)
-    rangefinder2_text = Label(texts_widget_frame, text="0.0")
-    rangefinder2_text.pack(side=LEFT, fill=BOTH, expand="yes", padx=5, pady=5)
-    rangefinder3_text = Label(texts_widget_frame, text="0.0")
-    rangefinder3_text.pack(side=LEFT, fill=BOTH, expand="yes", padx=5, pady=5)
-    rangefinder4_text = Label(texts_widget_frame, text="0.0")
-    rangefinder4_text.pack(side=LEFT, fill=BOTH, expand="yes", padx=5, pady=5)
-
+    Label(root, textvariable=rangefinder1_text).grid(row=0, column=0, padx=5, pady=5)
+    Label(root, textvariable=rangefinder2_text).grid(row=0, column=1, padx=5, pady=5)
+    Label(root, textvariable=rangefinder3_text).grid(row=0, column=2, padx=5, pady=5)
+    Label(root, textvariable=rangefinder4_text).grid(row=0, column=3, padx=5, pady=5)
 
 
 def init_connection():
-    global velocity_pub, steering_pub
-    global rangefinder1_subscr, rangefinder2_subscr, rangefinder3_subscr, rangefinder4_subscr
+    global velocity_pub, steering_pub, \
+            rangefinder1_subscr, rangefinder2_subscr, \
+            rangefinder3_subscr, rangefinder4_subscr
 
     rospy.init_node('gui_control')
     velocity_pub = rospy.Publisher('ur_hardware_driver/velocity_controller/command', Float64, queue_size=10)
     steering_pub = rospy.Publisher('ur_hardware_driver/steering_controller/command', Float64, queue_size=10)
 
-    rangefinder1_subscr = rospy.Subscriber('rangefinder1', Range, range_callback, queue_size=100)
-    rangefinder2_subscr = rospy.Subscriber('rangefinder2', Range, range_callback, queue_size=100)
-    rangefinder3_subscr = rospy.Subscriber('rangefinder3', Range, range_callback, queue_size=100)
-    rangefinder4_subscr = rospy.Subscriber('rangefinder4', Range, range_callback, queue_size=100)
+    rangefinder1_subscr = rospy.Subscriber('rangefinder1', Range, rangefinder1_callback, queue_size=10)
+    rangefinder2_subscr = rospy.Subscriber('rangefinder2', Range, rangefinder2_callback, queue_size=10)
+    rangefinder3_subscr = rospy.Subscriber('rangefinder3', Range, rangefinder3_callback, queue_size=10)
+    rangefinder4_subscr = rospy.Subscriber('rangefinder4', Range, rangefinder4_callback, queue_size=10)
     rospy.loginfo('Topics connected')
+
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     init_gui()
