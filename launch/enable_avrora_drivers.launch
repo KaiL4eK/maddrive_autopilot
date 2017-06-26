@@ -1,0 +1,4 @@
+<launch>
+	<include file="$(find ur_rangefinder_driver)/launch/ur_rangefinder_driver.launch" />
+	<node pkg="maddrive_autopilot" name="range_processor_node" type="range_processor_node" />
+</launch>
