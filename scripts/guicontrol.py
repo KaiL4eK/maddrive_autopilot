@@ -39,7 +39,6 @@ manual_control_enabled = True
 # ---------------------------------------------------------------------------
 
 def manual_publish_control():
-    print ('Publishing', manual_control_steering_value, manual_control_velocity_value)
     ros_controller_set_velocity(manual_control_velocity_value)
     ros_controller_set_steering(manual_control_steering_value)
 
@@ -49,10 +48,12 @@ def manual_publish_control():
 # ---------------------------------------------------------------------------
 
 def manual_control_callback_mouse_released(event):
-    global manual_control_velocity_value, manual_control_enable_publish, \
+    global manual_control_velocity_value, manual_control_steering_value, \
+            manual_control_enable_publish, \
             manual_control_steering_set_only, manual_control_velocity_set_only
 
     manual_control_velocity_value = 0
+    manual_control_steering_value = 0
     manual_control_enable_publish = False
     manual_control_velocity_set_only = False
     manual_control_steering_set_only = False
@@ -93,6 +94,7 @@ def manual_control_callback_shift_mouse_click(event):
 
 def toggle_control_state():
     global manual_control_enabled
+    global manual_control_velocity_value, manual_control_steering_value
 
     if manual_control_enabled:
         toggle_control_state_btn.config(text='Auto')
@@ -101,6 +103,7 @@ def toggle_control_state():
     else:
         toggle_control_state_btn.config(text='Manual')
         manual_control_enabled = True
+        manual_publish_control()
 
 # ---------------------------------------------------------------------------
 
@@ -143,12 +146,14 @@ def init_gui():
 # ---------------------------------------------------------------------------
 
 autopilot_period_ms = 100
-autopilot_const_velocity = 30
+autopilot_const_velocity = 50
 
 def autopilot_function():
     print('Executing autopilot')
 
-    if rangefinders_data[1] > 1 and rangefinders_data[2] > 2:
+    print('Forward rangefinders: %.1f / %.1f' % (rangefinders_data[1], rangefinders_data[2]))
+
+    if rangefinders_data[1] > 1 and rangefinders_data[2] > 1:
         ros_controller_set_velocity(autopilot_const_velocity)
         ros_controller_set_steering(0)
     else:
@@ -162,41 +167,43 @@ def autopilot_function():
 # ---------------------------------------------------------------------------
 
 velocity_abs_limit = 50
-steering_abs_limit = 110
+steering_abs_limit = 100
 
 def ros_controller_set_velocity(velocity):
     velocity = np.clip(velocity, -velocity_abs_limit, velocity_abs_limit);
     velocity_pub.publish(float(velocity))
+    print ('Publishing velocity', velocity)
 
 def ros_controller_set_steering(steering):
     steering = np.clip(steering, -steering_abs_limit, steering_abs_limit);
     steering_pub.publish(float(steering))
+    print ('Publishing steering', steering)
 
 rangefinders_data = [0, 0, 0, 0]
 
 def rangefinder1_callback(ros_data):
     rangefinders_data[0] = \
-        ros_data.range * lpf_rangefinder_coefficient + \
-        (1. - lpf_rangefinder_coefficient) * rangefinders_data[0]
-    rangefinder1_text.set(rangefinders_data[0])
+        ros_data.range * lpf_rangefinder_coefficient.get() + \
+        (1. - lpf_rangefinder_coefficient.get()) * rangefinders_data[0]
+    rangefinder1_text.set("%.1f" % rangefinders_data[0])
 
 def rangefinder2_callback(ros_data):
     rangefinders_data[1] = \
-        ros_data.range * lpf_rangefinder_coefficient + \
-        (1. - lpf_rangefinder_coefficient) * rangefinders_data[1]
-    rangefinder2_text.set(rangefinders_data[1])
+        ros_data.range * lpf_rangefinder_coefficient.get() + \
+        (1. - lpf_rangefinder_coefficient.get()) * rangefinders_data[1]
+    rangefinder2_text.set("%.1f" % rangefinders_data[1])
 
 def rangefinder3_callback(ros_data):
     rangefinders_data[2] = \
-        ros_data.range * lpf_rangefinder_coefficient + \
-        (1. - lpf_rangefinder_coefficient) * rangefinders_data[2]
-    rangefinder3_text.set(rangefinders_data[2])
+        ros_data.range * lpf_rangefinder_coefficient.get() + \
+        (1. - lpf_rangefinder_coefficient.get()) * rangefinders_data[2]
+    rangefinder3_text.set("%.1f" % rangefinders_data[2])
 
 def rangefinder4_callback(ros_data):
     rangefinders_data[3] = \
-        ros_data.range * lpf_rangefinder_coefficient + \
-        (1. - lpf_rangefinder_coefficient) * rangefinders_data[3]
-    rangefinder4_text.set(rangefinders_data[3])
+        ros_data.range * lpf_rangefinder_coefficient.get() + \
+        (1. - lpf_rangefinder_coefficient.get()) * rangefinders_data[3]
+    rangefinder4_text.set("%.1f" % rangefinders_data[3])
 
 def ros_controller_init_connection():
     global velocity_pub, steering_pub, \

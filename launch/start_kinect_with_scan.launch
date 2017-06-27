@@ -1,0 +1,8 @@
+<launch>
+	<!-- <group ns="avrora-kinect"> -->
+		<include file="$(find freenect_launch)/launch/freenect.launch" />
+		<node pkg="depthimage_to_laserscan" name="depthimage_to_laserscan" type="depthimage_to_laserscan" >
+			<remap from="image" to="camera/depth/image" />
+		</node>
+	<!-- </group> -->
+</launch>
