@@ -103,6 +103,8 @@ def toggle_control_state():
     else:
         toggle_control_state_btn.config(text='Manual')
         manual_control_enabled = True
+        manual_control_velocity_value = 0
+        manual_control_steering_value = 0
         manual_publish_control()
 
 # ---------------------------------------------------------------------------
@@ -153,11 +155,16 @@ def autopilot_function():
 
     print('Forward rangefinders: %.1f / %.1f' % (rangefinders_data[1], rangefinders_data[2]))
 
-    if rangefinders_data[1] > 1 and rangefinders_data[2] > 1:
+    if rangefinders_data[1] > 2 and rangefinders_data[2] > 2:
         ros_controller_set_velocity(autopilot_const_velocity)
         ros_controller_set_steering(0)
     else:
-        ros_controller_set_velocity(0)
+        if rangefinders_data[1] < rangefinders_data[2]:
+            ros_controller_set_steering(steering_abs_limit)
+            ros_controller_set_velocity(autopilot_const_velocity)
+        else:
+            ros_controller_set_steering(-steering_abs_limit)
+            ros_controller_set_velocity(autopilot_const_velocity)  
 
     if not manual_control_enabled:
         root.after(autopilot_period_ms, autopilot_function)
@@ -166,7 +173,7 @@ def autopilot_function():
 
 # ---------------------------------------------------------------------------
 
-velocity_abs_limit = 50
+velocity_abs_limit = 100
 steering_abs_limit = 100
 
 def ros_controller_set_velocity(velocity):

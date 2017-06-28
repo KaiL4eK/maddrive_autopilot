@@ -1,8 +1,10 @@
+<?xml version="1.0"?>
+
 <launch>
 	<!-- <group ns="avrora"> -->
 		<include file="$(find ur_rangefinder_driver)/launch/ur_rangefinder_driver.launch" />
 		<node pkg="maddrive_autopilot" name="range_processor_node" type="range_processor_node" />
 		<include file="$(find ur_hardware_driver)/launch/ur_hardware_driver.launch" />
-		<node pkg="maddrive_autopilot" name="gui_control" type="guicontrol.py" output="screen" />
+		<!-- <node pkg="maddrive_autopilot" name="gui_control" type="guicontrol.py" output="screen" /> -->
 	<!-- </group> -->
 </launch>
