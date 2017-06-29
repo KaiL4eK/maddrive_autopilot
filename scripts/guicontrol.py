@@ -22,8 +22,8 @@ from cv_bridge import CvBridge, CvBridgeError
 
 root = Tk()
 
-control_canvas_width = 400
-control_canvas_height = 300
+control_canvas_width = 800
+control_canvas_height = 600
 
 manual_control_steering_value = 0
 manual_control_velocity_value = 0
@@ -149,17 +149,17 @@ def init_gui():
 # ---------------------------------------------------------------------------
 
 autopilot_period_ms = 100
-autopilot_const_velocity = 50
+autopilot_const_velocity = 100
 
 def autopilot_function():
     print('Executing autopilot')
 
     print('Forward rangefinders: %.1f / %.1f' % (rangefinders_data[1], rangefinders_data[2]))
 
-    reference_lane_control = 600
-    prop_rate = 2
+    reference_lane_control = 530
+    prop_rate = 1.2
 
-    if rangefinders_data[1] > 0.5 and rangefinders_data[2] > 0.5:
+    if rangefinders_data[1] >= 0 and rangefinders_data[2] >= 0:
         error = reference_lane_control - control_value
 
         ros_controller_set_velocity(autopilot_const_velocity)
@@ -183,7 +183,7 @@ def autopilot_function():
 
 # ---------------------------------------------------------------------------
 
-velocity_abs_limit = 100
+velocity_abs_limit = 200
 steering_abs_limit = 100
 
 def ros_controller_set_velocity(velocity):
@@ -225,7 +225,7 @@ def rangefinder4_callback(ros_data):
 def lane_control_cb(ros_data):
     global control_value
     control_value = ros_data.data
-    print(control_value)
+    # print(control_value)
 
 def ros_controller_init_connection():
     global velocity_pub, steering_pub
