@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<launch>
+	<include file="$(find maddrive_cv_tools)/config/load_config.xml" />
+
+	<node pkg="maddrive_autopilot" name="main_controller" type="guicontrol.py" output="screen">
+		<remap from="lane_control" to="md_control/control" />
+	</node>
+
+	<node pkg="maddrive_autopilot" name="range_processor_node" type="range_processor_node" />
+
+	<node pkg="maddrive_cv_tools" name="line_following" type="line_following.py" output="screen">
+		<param name="use_kinect_topic" value="true" />
+		<remap from="image" to="camera/rgb/image_color" />
+	</node>
+
+</launch>
