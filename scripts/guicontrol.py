@@ -103,9 +103,10 @@ def toggle_control_state():
     else:
         toggle_control_state_btn.config(text='Manual')
         manual_control_enabled = True
-        manual_control_velocity_value = 0
-        manual_control_steering_value = 0
         manual_publish_control()
+
+    manual_control_velocity_value = 0
+    manual_control_steering_value = 0
 
 # ---------------------------------------------------------------------------
 
@@ -155,21 +156,30 @@ def autopilot_function():
 
     print('Forward rangefinders: %.1f / %.1f' % (rangefinders_data[1], rangefinders_data[2]))
 
-    if rangefinders_data[1] > 2 and rangefinders_data[2] > 2:
+    reference_lane_control = 600
+    prop_rate = 2
+
+    if rangefinders_data[1] > 0.5 and rangefinders_data[2] > 0.5:
+        error = reference_lane_control - control_value
+
         ros_controller_set_velocity(autopilot_const_velocity)
-        ros_controller_set_steering(0)
+        ros_controller_set_steering(-error * prop_rate)
     else:
-        if rangefinders_data[1] < rangefinders_data[2]:
-            ros_controller_set_steering(steering_abs_limit)
-            ros_controller_set_velocity(autopilot_const_velocity)
-        else:
-            ros_controller_set_steering(-steering_abs_limit)
-            ros_controller_set_velocity(autopilot_const_velocity)  
+        ros_controller_set_steering(0)
+        ros_controller_set_velocity(0)
+
+        # if rangefinders_data[1] < rangefinders_data[2]:
+        #     ros_controller_set_steering(steering_abs_limit)
+        #     ros_controller_set_velocity(autopilot_const_velocity)
+        # else:
+        #     ros_controller_set_steering(-steering_abs_limit)
+        #     ros_controller_set_velocity(autopilot_const_velocity)  
 
     if not manual_control_enabled:
         root.after(autopilot_period_ms, autopilot_function)
     else:
         ros_controller_set_velocity(0)
+        ros_controller_set_steering(0)
 
 # ---------------------------------------------------------------------------
 
@@ -213,7 +223,9 @@ def rangefinder4_callback(ros_data):
     rangefinder4_text.set("%.1f" % rangefinders_data[3])
 
 def lane_control_cb(ros_data):
-    print(ros_data)
+    global control_value
+    control_value = ros_data.data
+    print(control_value)
 
 def ros_controller_init_connection():
     global velocity_pub, steering_pub
