@@ -14,7 +14,7 @@ from matplotlib.figure import Figure
 import time
 
 import rospy
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Int32
 from sensor_msgs.msg import Image, Range
 
 import cv2
@@ -212,18 +212,20 @@ def rangefinder4_callback(ros_data):
         (1. - lpf_rangefinder_coefficient.get()) * rangefinders_data[3]
     rangefinder4_text.set("%.1f" % rangefinders_data[3])
 
+def lane_control_cb(ros_data):
+    print(ros_data)
+
 def ros_controller_init_connection():
-    global velocity_pub, steering_pub, \
-            rangefinder1_subscr, rangefinder2_subscr, \
-            rangefinder3_subscr, rangefinder4_subscr
+    global velocity_pub, steering_pub
     
     velocity_pub = rospy.Publisher('ur_hardware_driver/velocity_controller/command', Float64, queue_size=10)
     steering_pub = rospy.Publisher('ur_hardware_driver/steering_controller/command', Float64, queue_size=10)
 
-    rangefinder1_subscr = rospy.Subscriber('rangefinder1', Range, rangefinder1_callback, queue_size=10)
-    rangefinder2_subscr = rospy.Subscriber('rangefinder2', Range, rangefinder2_callback, queue_size=10)
-    rangefinder3_subscr = rospy.Subscriber('rangefinder3', Range, rangefinder3_callback, queue_size=10)
-    rangefinder4_subscr = rospy.Subscriber('rangefinder4', Range, rangefinder4_callback, queue_size=10)
+    rospy.Subscriber('lane_control', Int32, lane_control_cb, queue_size=10)
+    rospy.Subscriber('rangefinder1', Range, rangefinder1_callback, queue_size=10)
+    rospy.Subscriber('rangefinder2', Range, rangefinder2_callback, queue_size=10)
+    rospy.Subscriber('rangefinder3', Range, rangefinder3_callback, queue_size=10)
+    rospy.Subscriber('rangefinder4', Range, rangefinder4_callback, queue_size=10)
 
 # ---------------------------------------------------------------------------
 
