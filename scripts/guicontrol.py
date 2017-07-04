@@ -183,7 +183,7 @@ def autopilot_function():
 
 # ---------------------------------------------------------------------------
 
-velocity_abs_limit = 200
+velocity_abs_limit = 100
 steering_abs_limit = 100
 
 def ros_controller_set_velocity(velocity):

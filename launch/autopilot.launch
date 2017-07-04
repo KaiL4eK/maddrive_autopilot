@@ -9,9 +9,9 @@
 
 	<node pkg="maddrive_autopilot" name="range_processor_node" type="range_processor_node" />
 
-	<node pkg="maddrive_cv_tools" name="line_following" type="line_following.py" output="screen">
-		<param name="use_kinect_topic" value="true" />
-		<remap from="image" to="camera/rgb/image_color" />
-	</node>
+	<!-- <node pkg="maddrive_cv_tools" name="line_following" type="line_following.py" output="screen"> -->
+		<!-- <param name="use_kinect_topic" value="true" /> -->
+		<!-- <remap from="image" to="camera/rgb/image_color" /> -->
+	<!-- </node> -->
 
 </launch>
