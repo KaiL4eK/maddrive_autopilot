@@ -15,15 +15,15 @@ import time
 
 import rospy
 from std_msgs.msg import Float64, Int32
-from sensor_msgs.msg import Image, Range
+from sensor_msgs.msg import Image, Range, JointState
 
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
 root = Tk()
 
-control_canvas_width = 800
-control_canvas_height = 600
+control_canvas_width = 600
+control_canvas_height = 400
 
 manual_control_steering_value = 0
 manual_control_velocity_value = 0
@@ -227,6 +227,25 @@ def lane_control_cb(ros_data):
     control_value = ros_data.data
     # print(control_value)
 
+prev_time_sec = -1
+passed_way_enc = 0
+
+def joint_state_cb(ros_data):
+    global prev_time_sec, passed_way_enc
+    dt = 0
+    current_time_sec = ros_data.header.stamp.to_sec()
+    if prev_time_sec > 0:
+        dt = current_time_sec - prev_time_sec
+
+    prev_time_sec = current_time_sec
+    vel = ros_data.velocity[1]
+    passed_way_enc += vel * dt
+
+    print(dt, vel, passed_way_enc)
+
+
+
+
 def ros_controller_init_connection():
     global velocity_pub, steering_pub
     
@@ -238,6 +257,8 @@ def ros_controller_init_connection():
     rospy.Subscriber('rangefinder2', Range, rangefinder2_callback, queue_size=10)
     rospy.Subscriber('rangefinder3', Range, rangefinder3_callback, queue_size=10)
     rospy.Subscriber('rangefinder4', Range, rangefinder4_callback, queue_size=10)
+
+    rospy.Subscriber('joint_states', JointState, joint_state_cb, queue_size=100)
 
 # ---------------------------------------------------------------------------
 

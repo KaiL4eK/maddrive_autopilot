@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<launch>
+	<arg name="path" default="/home/unior/bags/bag_test.bag" />
+
+	<include file="$(find maddrive_cv_tools)/config/load_config.xml" />
+
+	<node pkg="rosbag" type="play" name="player" output="log" args="-l $(arg path)" />
+
+	<node pkg="image_view" type="image_view" name="image_view" output="log">
+		<remap from="image" to="my_camera/rgb/image_color" />
+	</node>	
+
+	<node pkg="maddrive_autopilot" name="main_controller" type="guicontrol.py" output="screen">
+		<remap from="lane_control" to="md_control/control" />
+	</node>
+
+</launch>
