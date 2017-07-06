@@ -139,7 +139,7 @@ def init_gui():
     Label(root, textvariable=rangefinder4_text).grid(row=0, column=3, padx=5, pady=5)
 
     lpf_rangefinder_coefficient = DoubleVar()
-    lpf_rangefinder_coefficient.set(1)
+    lpf_rangefinder_coefficient.set(0.5)
     Scale(root, from_=0, to=1, label='LPF rate', resolution=.1, orient=HORIZONTAL, variable=lpf_rangefinder_coefficient)\
             .grid(row=2, column=2, columnspan=2, padx=5, pady=5)
 
@@ -149,31 +149,120 @@ def init_gui():
 # ---------------------------------------------------------------------------
 
 autopilot_period_ms = 100
-autopilot_const_velocity = 100
+autopilot_const_velocity = 120
+
+prop_rate = 1
+
+detect_zebra = False
+cheat_enc = 400
+wait_for_zebra = False
+near_border = False
+border_counter = 5
+
+def scenario_1():
+    global detect_zebra, wait_for_zebra, near_border, border_counter
+
+    if near_border:
+        ros_controller_set_steering(-90)
+        ros_controller_set_velocity(autopilot_const_velocity/2)
+        border_counter -= 1
+        if border_counter == 0:
+            near_border = False
+
+    if not wait_for_zebra :
+        if passed_way_enc > cheat_enc:
+            ros_controller_set_velocity(autopilot_const_velocity)
+            ros_controller_set_steering(((control_value - 70) * prop_rate))
+        else:
+            ros_controller_set_velocity(autopilot_const_velocity)
+            ros_controller_set_steering(0)
+
+    if rangefinders_data[3] < 0.4:
+        near_border = True
+        return
+
+    if not detect_zebra and crossing_mean > 90:
+        if green_zone > 0:
+            detect_zebra = True
+            wait_for_zebra = False
+        else:
+            wait_for_zebra = True
+            ros_controller_set_velocity(0)
+
+obstacle_counter = 0
+obstacle_found = False
+obstacle_skipped = False
+zebra_cntr = 0
+sc2_ref = 130
+
+def scenario_2():
+    global obstacle_counter, obstacle_found, sc2_ref, obstacle_skipped, zebra_cntr
+
+    if green_zone > 2000:
+        obstacle_found = True
+
+    if obstacle_found:
+        if green_zone > 0:
+            ros_controller_set_velocity(autopilot_const_velocity)
+            ros_controller_set_steering(-90)
+            return
+        else:
+            obstacle_skipped = True
+            obstacle_found = False
+
+    if obstacle_skipped:
+        if not detect_zebra and crossing_mean > 90:
+            detect_zebra = True
+            wait_for_zebra = True
+            ros_controller_set_velocity(0)
+            return
+
+        if wait_for_zebra:
+            zebra_cntr += 1
+            if zebra_cntr == 30:
+                wait_for_zebra = False                
+
+        if rangefinders_data[3] < 0.4:
+            ros_controller_set_steering(-90)
+            ros_controller_set_velocity(autopilot_const_velocity/2)
+            return
+
+        if rangefinders_data[0] < 0.4:
+            ros_controller_set_steering(90)
+            ros_controller_set_velocity(autopilot_const_velocity/2)
+            return
+
+
+        ros_controller_set_steering(5)
+        ros_controller_set_velocity(autopilot_const_velocity)
+
+        return
+
+    # if rangefinders_data[1] < 1 or rangefinders_data[2] < 1:
+    #     obstacle_counter += 1
+    # else:
+    #     obstacle_counter = 0
+
+    # if not obstacle_found and obstacle_counter > 2:
+    #     print('Detected')
+    #     obstacle_found = True
+    #     # sc2_ref = 150
+
+    # if obstacle_found:
+    #     ros_controller_set_velocity(autopilot_const_velocity)
+    #     ros_controller_set_steering(-90)
+
+    #     if rangefinders_data[1] < 2 or rangefinders_data[2] > 2
+
+    #     return
+
+    ros_controller_set_velocity(autopilot_const_velocity)
+    ros_controller_set_steering(((control_value - sc2_ref) * prop_rate))
+
 
 def autopilot_function():
-    print('Executing autopilot')
-
-    print('Forward rangefinders: %.1f / %.1f' % (rangefinders_data[1], rangefinders_data[2]))
-
-    reference_lane_control = 530
-    prop_rate = 1.2
-
-    if rangefinders_data[1] >= 0 and rangefinders_data[2] >= 0:
-        error = reference_lane_control - control_value
-
-        ros_controller_set_velocity(autopilot_const_velocity)
-        ros_controller_set_steering(-error * prop_rate)
-    else:
-        ros_controller_set_steering(0)
-        ros_controller_set_velocity(0)
-
-        # if rangefinders_data[1] < rangefinders_data[2]:
-        #     ros_controller_set_steering(steering_abs_limit)
-        #     ros_controller_set_velocity(autopilot_const_velocity)
-        # else:
-        #     ros_controller_set_steering(-steering_abs_limit)
-        #     ros_controller_set_velocity(autopilot_const_velocity)  
+    # scenario_1()
+    scenario_2()
 
     if not manual_control_enabled:
         root.after(autopilot_period_ms, autopilot_function)
@@ -183,18 +272,18 @@ def autopilot_function():
 
 # ---------------------------------------------------------------------------
 
-velocity_abs_limit = 100
-steering_abs_limit = 100
+velocity_abs_limit = 150
+steering_abs_limit = 90
 
 def ros_controller_set_velocity(velocity):
     velocity = np.clip(velocity, -velocity_abs_limit, velocity_abs_limit);
     velocity_pub.publish(float(velocity))
-    print ('Publishing velocity', velocity)
+    # print ('Publishing velocity', velocity)
 
 def ros_controller_set_steering(steering):
     steering = np.clip(steering, -steering_abs_limit, steering_abs_limit);
     steering_pub.publish(float(steering))
-    print ('Publishing steering', steering)
+    # print ('Publishing steering', steering)
 
 rangefinders_data = [0, 0, 0, 0]
 
@@ -225,7 +314,7 @@ def rangefinder4_callback(ros_data):
 def lane_control_cb(ros_data):
     global control_value
     control_value = ros_data.data
-    # print(control_value)
+    print(control_value)
 
 prev_time_sec = -1
 passed_way_enc = 0
@@ -241,10 +330,18 @@ def joint_state_cb(ros_data):
     vel = ros_data.velocity[1]
     passed_way_enc += vel * dt
 
-    print(dt, vel, passed_way_enc)
+    # print(passed_way_enc)
 
+green_zone = -1
+crossing_mean = -1
 
+def tl_zone_green_cb(ros_data):
+    global green_zone
+    green_zone = ros_data.data
 
+def crossing_mean_cb(ros_data):
+    global crossing_mean
+    crossing_mean = ros_data.data
 
 def ros_controller_init_connection():
     global velocity_pub, steering_pub
@@ -259,6 +356,8 @@ def ros_controller_init_connection():
     rospy.Subscriber('rangefinder4', Range, rangefinder4_callback, queue_size=10)
 
     rospy.Subscriber('joint_states', JointState, joint_state_cb, queue_size=100)
+    rospy.Subscriber('tl_zone_green', Float64, tl_zone_green_cb, queue_size=10 )
+    rospy.Subscriber('cross_line/max_perc', Float64, crossing_mean_cb, queue_size=10 )
 
 # ---------------------------------------------------------------------------
 

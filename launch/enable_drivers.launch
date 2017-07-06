@@ -2,6 +2,7 @@
 
 <launch>
 	<!-- <include file="$(find openni_launch)/launch/openni.launch" /> -->
-	<include file="$(find ur_rangefinder_driver)/launch/ur_rangefinder_driver.launch" />
 	<include file="$(find ur_hardware_driver)/launch/ur_hardware_driver.launch" />
+	<include file="$(find ur_rangefinder_driver)/launch/ur_rangefinder_driver.launch" />
+
 </launch>
